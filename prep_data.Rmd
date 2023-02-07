@@ -60,11 +60,41 @@ df
 Altering the format for easy visualization.
 ```{r}
 tdf <- df %>% 
-  pivot_longer(2:17, names_to = "Session",values_to = "HR") %>% 
+  pivot_longer(2:17, names_to = "Session",values_to = "HR")
+
+# add preceding 0 for ordering
+tdf$Session <- tdf$Session %>% 
+  str_replace_all("\\s(?=\\d$)"," 0")
+
+tdf <- tdf %>% 
   arrange(Session)
 
 tdf
 ```
+I plan on adding in the other datasets, but hey all have slightly different numbers of readings. Maybe if we joined the three sheets into a single "session #" table, then did the remove_na function from before.
+
+I wonder what the raw data looks like?
+
+```{r}
+raw_eda <- read_xlsx('Play Therapy Wristband Data New V2.xlsx', sheet=2)[1:16]
+raw_temp <- read_xlsx('Play Therapy Wristband Data New V2.xlsx', sheet=3)[1:16]
+
+raw_eda %>% 
+  summarize(
+    across(
+      everything(), ~ sum(!is.na(.))
+    )
+  ) %>%  t()
+
+raw_temp %>% 
+  summarize(
+    across(
+      everything(), ~ sum(!is.na(.))
+    )
+  ) %>%  t()
+```
+
+
 Saving datasets out for reuse in other scripts.
 ```{r}
 df %>% write_csv("df.csv")
@@ -72,15 +102,39 @@ tdf %>% write_csv("tdf.csv")
 ```
 
 
-
-Basic data vis
+Did I make a mistake somewhere? Session 2 and 3 are identical in their last 500 readings, feom about 1250 on
 ```{r}
-tdf %>%
-  ggplot(aes(x=Time,y=HR,group=Session,color=Session))+
-  geom_point(alpha=.5,size=.6)+
-  labs(
-    title='Heart rate over time in all sessions',
-    subtitle='This is madness'
-  )
+df %>% 
+  select(Time, `Session 2`, `Session 3`) %>% 
+  filter(Time > 1500 & Time < 1550)
 ```
+
+
+```{r}
+
+tdf %>%
+  filter(Session == "Session 02") %>% 
+  filter(Time > 1500 & Time < 1550)
+
+tdf %>%
+  filter(Session == "Session 03") %>% 
+  filter(Time > 1500 & Time < 1550)
+```
+
+Ok, so it's here, is it in the Raw? The time will be a little off.
+
+```{r}
+x <- raw["Session 2"] %>% 
+  na.omit() %>% 
+  tail(10)
+y <- raw["Session 3"] %>% 
+  na.omit() %>% 
+  tail(10)
+
+cbind(x,y)
+
+```
+
+The raw data is borked on Session 2 and 3. They are the same for the last few hundred rows. 
+
 

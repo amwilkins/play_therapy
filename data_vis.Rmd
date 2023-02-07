@@ -1,0 +1,66 @@
+---
+title: "Exploratory Visuals"
+output: html_notebook
+---
+
+Basic exploratory visuals, and some base graphs to use later.
+
+```{r, message=FALSE}
+library(tidyverse)
+df <- read_csv("df.csv")
+tdf <- read_csv("tdf.csv")
+```
+
+```{r, include=FALSE}
+glimpse(tdf)
+```
+
+Here's a fun graph. 
+```{r}
+tdf %>%
+  ggplot(aes(x=Time,y=HR,group=Session,color=Session))+
+  geom_line() +
+  labs(
+    title='Heart rate over time in all sessions',
+    subtitle = "Decending from session 1 to 16",
+    caption="Maybe this tells us nothing but colors are cool",
+    y="Heart Rate"
+    )+
+  facet_grid(rows=vars(Session))+
+  theme(
+    axis.ticks.y = element_blank(),
+    axis.text.y = element_blank(),
+    legend.position = "none",
+    #legend.key.height = unit(.15,"cm"),
+    strip.background = element_blank(),
+    strip.text = element_blank(),
+  )
+```
+Notes:
+Maybe we could graph something like variability, or color the line by difference from average.
+
+
+
+```{r}
+for (i in unique(tdf$Session)){
+  
+  plot <- tdf %>% 
+    filter(Session == i) %>%
+    ggplot(aes(x=Time,y=HR))+
+    geom_line() +
+    labs(
+      title='Heart rate over time',
+      subtitle = i,
+      y="Heart Rate"
+      )+
+    theme(
+      legend.position = "none",
+    )+
+    ylim(65,140)
+  
+  print(plot)
+  
+}
+```
+
+
