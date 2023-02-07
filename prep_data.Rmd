@@ -1,0 +1,86 @@
+---
+title: "Data Prep"
+output: html_notebook
+---
+
+
+# Cleaning and exploring Play Therapy Data.
+
+### Basics
+
+The data consists heartrate readings of a child over 16 sessions of play therapy. Heartrate readings were taken at regular intervals from a wearable device on the child's wrist, creating between 1716 and 1832 reading for each session. 
+
+### Cleaning
+
+The heartrate monitor was on the child before the therapy session had started, and was removed at the end of the session. We are currently unsure of the exact lengths of the sessions (maybe we can get this from the tapes), so we're not really sure where the data begins in relation to the sessions. We do know where the session ends, so the final reading in each session could be considered a standardizing time, and we can shift all the na's to the front to account for our confusion there. We could also possibly remove the first values of all sessions to the length of the shortest session, which would standardize our reading counts while only throwing out less than ~6% of our longest session. 
+
+In the end, I kind of like the idea of a transactional format (kind of, right? kind of tansactional), with session on x1, time on x2, and hr on x3. I believe we have extra bio data that we could then add as columns if we wanted to do some more general "excitement" measure. 
+
+
+```{r, include=FALSE}
+#install.packages("tidyverse")
+library(tidyverse)
+library(readxl)
+
+raw <- read_xlsx('Play Therapy Wristband Data New V2.xlsx')[1:16]
+```
+
+
+```{r}
+summary(raw)
+```
+
+Missing values:
+```{r}
+raw %>% 
+  summarize(
+    across(
+      everything(), ~ sum(is.na(.))
+    )
+  ) %>%  t()
+```
+
+This just truncs them all to 1716 readings. Maybe we could go to the tapes and try and get a more accurate idea of where we should start, and maybe get the full data to come up with a better system.
+
+```{r}
+remove_na <- function(x){
+  na_removed <- x[!is.na(x)]
+  standardized <- na_removed %>% tail(1716)
+  return(standardized)
+}
+
+df <- raw %>%
+  lapply(remove_na) %>% 
+  bind_cols()
+
+df <- df %>% rowid_to_column("Time")
+
+df
+```
+Altering the format for easy visualization.
+```{r}
+tdf <- df %>% 
+  pivot_longer(2:17, names_to = "Session",values_to = "HR") %>% 
+  arrange(Session)
+
+tdf
+```
+Saving datasets out for reuse in other scripts.
+```{r}
+df %>% write_csv("df.csv")
+tdf %>% write_csv("tdf.csv")
+```
+
+
+
+Basic data vis
+```{r}
+tdf %>%
+  ggplot(aes(x=Time,y=HR,group=Session,color=Session))+
+  geom_point(alpha=.5,size=.6)+
+  labs(
+    title='Heart rate over time in all sessions',
+    subtitle='This is madness'
+  )
+```
+
