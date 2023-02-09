@@ -1,0 +1,127 @@
+---
+title: "R Notebook"
+output: 
+  html_notebook: 
+    code_folding: hide
+---
+
+
+```{r, include=FALSE}
+library(tidyverse)
+```
+
+
+## Data Cleaning
+Requires the "Wristband Raw Data" folder within the current directory. Extracts heart rate data and converts into two data formats and saves them as csv files in this directory. Adds a preceding 0 to session titles for ordering and a time column.
+```{r, message=FALSE}
+# list of hr csvs
+hr_list <- list.files(pattern="HR.csv", recursive = T)
+
+# extract csv, rename column, cbind together
+# last 1800 rows is 30 minutes, a bit arbitrary to be honest
+hr_df = tibble(.rows=1800)
+for (i in hr_list){
+  data <- read_csv(i) %>% tail(1800)
+  session <- str_match_all(i,"Session\\s\\d+") %>% str_replace_all("\\s(?=\\d$)"," 0")
+  names(data) <- session
+  
+  hr_df <- cbind(hr_df,data)
+}
+
+# column order
+hr_df <- hr_df %>% select(order(colnames(hr_df)))
+# add time
+hr_df <- hr_df %>% rowid_to_column("Time")
+
+write_csv(hr_df,"hr_df.csv")
+
+hr_df
+```
+
+Here we convert to a longer dataframe for ease of visualizations.
+```{r}
+hr_tdf <- hr_df %>% 
+  pivot_longer(2:17, names_to = "Session",values_to = "HR") %>% 
+  arrange(Session)
+
+write_csv(hr_tdf,"hr_tdf.csv")
+
+hr_tdf
+```
+
+## Exploring
+```{r}
+knitr::kable(
+  hr_tdf %>%
+    group_by(Session) %>%
+    summarize(
+      avg = mean(HR) %>% round(2),
+      sd = sd(HR) %>% round(2),
+      var = var(HR) %>% round(2)
+    )
+)
+```
+
+
+## Basic vis
+```{r,fig.width = 12,fig.height = 8,out.width="150%"}
+#Time
+hr_tdf %>%
+  ggplot(aes(x=Time,y=HR,group=Session,color=Session))+
+  geom_line() +
+  labs(
+    title='Heart rate over time',
+    subtitle = "Decending from session 1 to 16",
+    y="Session"
+    ) +
+  facet_grid(rows=vars(Session))+
+  theme(
+    axis.ticks.y = element_blank(),
+    axis.text.y = element_blank(),
+    legend.position = "none",
+    strip.background = element_blank(),
+    strip.text = element_blank(),
+  ) ->p1
+
+#Density
+hr_tdf %>%
+  ggplot(aes(HR,fill=Session))+
+  geom_density(alpha=.3) + 
+  labs(
+    title='Density of HR values',
+    subtitle = " ",
+    y=" "
+    )+
+  facet_grid(vars(Session))+
+  theme(
+    axis.ticks.y = element_blank(),
+    axis.text.y = element_blank(),
+    legend.position = "none",
+    # strip.background = element_blank(),
+    strip.text = element_blank(),
+  ) -> p2
+
+gridExtra::grid.arrange(p1,p2,ncol=2)
+```
+
+
+
+```{r}
+for (i in unique(hr_tdf$Session)){
+  plot <- hr_tdf %>% 
+    filter(Session == i) %>%
+    ggplot(aes(x=Time,y=HR))+
+    geom_line() +
+    labs(
+      title='Heart rate over time',
+      subtitle = i,
+      y="Heart Rate"
+      )+
+    theme(legend.position = "none")+
+    ylim(65,140)
+  print(plot)
+}
+```
+
+
+

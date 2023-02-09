@@ -2,4 +2,5 @@
 *.xlsx
 *.html
 *.Rhistory
-.Rproj.user
+*.Rproj.user
+*.rproj
